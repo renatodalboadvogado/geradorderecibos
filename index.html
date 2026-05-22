@@ -464,7 +464,7 @@ function baixarPDF() {
     /* ── Overrides de impressão ── */
     @page {
       size: A4 portrait;
-      margin: 12mm 14mm;
+      margin: 0;          /* margin 0 suprime URL/cabeçalho do Chrome */
     }
     *, *::before, *::after {
       -webkit-print-color-adjust: exact !important;
@@ -479,7 +479,7 @@ function baixarPDF() {
       width: 100% !important;
       min-height: auto !important;
       box-shadow: none !important;
-      padding: 0 !important;
+      padding: 14mm 16mm !important;  /* margem visual fica aqui, não no @page */
       display: block !important;
     }
   </style>
