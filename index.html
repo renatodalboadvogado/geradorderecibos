@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerador de Recibos — Fenix Ltda.</title>
+  <style>
+    /* ── App UI ── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #1a202c; }
+    .app-header { background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%); color: #fff; padding: 24px 32px; }
+    .app-header h1 { margin: 0; font-size: 1.6rem; font-weight: 700; }
+    .app-header p { margin: 4px 0 0; opacity: .8; font-size: .95rem; }
+    .app-body { display: flex; gap: 24px; padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
+    .panel-input { flex: 0 0 380px; }
+    .panel-preview { flex: 1; min-width: 0; }
+    .card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.1); padding: 20px; }
+    .card h2 { margin: 0 0 12px; font-size: 1rem; font-weight: 600; color: #2d3748; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+    textarea {
+      width: 100%; height: 280px; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px;
+      font-family: 'Courier New', monospace; font-size: .85rem; line-height: 1.5; resize: vertical;
+      transition: border-color .2s;
+    }
+    textarea:focus { outline: none; border-color: #4299e1; box-shadow: 0 0 0 3px rgba(66,153,225,.2); }
+    .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+    button {
+      padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer;
+      font-size: .9rem; font-weight: 600; transition: all .2s;
+    }
+    .btn-primary { background: #2b6cb0; color: #fff; flex: 1; }
+    .btn-primary:hover { background: #2c5282; }
+    .btn-success { background: #276749; color: #fff; flex: 1; }
+    .btn-success:hover { background: #22543d; }
+    .btn-success:disabled { background: #a0aec0; cursor: not-allowed; }
+    .alert { padding: 10px 14px; border-radius: 6px; margin-top: 10px; font-size: .85rem; display: none; }
+    .alert-error { background: #fff5f5; color: #c53030; border: 1px solid #fc8181; }
+    .alert-ok { background: #f0fff4; color: #276749; border: 1px solid #68d391; }
+    .preview-wrap { overflow: auto; background: #e2e8f0; border-radius: 6px; padding: 20px; min-height: 400px; display: flex; align-items: flex-start; justify-content: center; }
+    .preview-empty { color: #a0aec0; text-align: center; margin: auto; font-size: .9rem; }
+    .hint { font-size: .78rem; color: #718096; margin-top: 6px; line-height: 1.5; }
+
+    /* ── Receipt styles ── */
+    #recibo-container {
+      width: 210mm;
+      min-height: 297mm;
+      background: #fff;
+      padding: 14mm 16mm;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10pt;
+      color: #000;
+      box-shadow: 0 4px 20px rgba(0,0,0,.15);
+    }
+    .rec-header { display: flex; align-items: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 4px; }
+    .rec-logo { width: 54px; height: 54px; object-fit: contain; margin-right: 12px; }
+    .rec-company { flex: 1; }
+    .rec-company-name { font-size: 14pt; font-weight: bold; }
+    .rec-company-info { font-size: 8.5pt; color: #444; margin-top: 2px; }
+    .rec-heading { margin: 10px 0 6px; font-size: 11pt; font-weight: bold; color: #1a365d; border-left: 3px solid #2b6cb0; padding-left: 8px; }
+    .rec-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 9.5pt; }
+    .rec-table td { border: 1px solid #999; padding: 5px 8px; vertical-align: top; }
+    .rec-table .td-label { background: #f7fafc; font-weight: bold; width: 32%; color: #2d3748; white-space: nowrap; }
+    .rec-val-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 9.5pt; }
+    .rec-val-table td { border: 1px solid #999; padding: 6px 10px; vertical-align: top; }
+    .rec-val-big { font-size: 13pt; font-weight: bold; color: #276749; text-align: center; width: 28%; }
+    .rec-val-words { font-style: italic; color: #444; }
+    .rec-guest-cell { line-height: 1.7; }
+    .rec-cafe-label { background: #f7fafc; font-weight: bold; width: 28%; color: #2d3748; font-size: 9pt; }
+    .rec-paragraph { margin: 12px 0; font-size: 9.5pt; line-height: 1.6; text-align: justify; }
+    .rec-date { margin: 10px 0; font-size: 9.5pt; }
+    .rec-sig-section { margin-top: 20px; text-align: center; }
+    .rec-sig-images { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 4px; }
+    .rec-sig-stamp { width: 70px; height: 70px; object-fit: contain; }
+    .rec-sig-line { border-top: 1.5px solid #333; width: 220px; margin: 8px auto 4px; }
+    .rec-sig-name { font-size: 9.5pt; font-weight: bold; }
+    .rec-sig-info { font-size: 8.5pt; color: #444; margin-top: 2px; }
+  </style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>🏨 Gerador de Recibos</h1>
+  <p>Fenix Ltda. &mdash; Cole os dados da reserva e clique em <strong>Gerar Recibo</strong></p>
+</div>
+
+<div class="app-body">
+
+  <!-- Painel de entrada -->
+  <div class="panel-input">
+    <div class="card">
+      <h2>📋 Dados da Reserva</h2>
+      <textarea id="inputData" placeholder="Dados Necessários para o Recibo: 
+Data de início e término da reserva: 
+Número de Diárias:
+ 
+Valor: 
+Nome: 
+CPF: 
+Endereço: 
+
+Opcional: 
+Empresa: 
+CNPJ:"></textarea>
+      <p class="hint">Cole a mensagem preenchida acima e clique em <strong>Gerar Recibo</strong>.</p>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="gerarRecibo()">✅ Gerar Recibo</button>
+        <button class="btn-success" id="btnPDF" onclick="baixarPDF()" disabled>⬇ Baixar PDF</button>
+      </div>
+      <div class="alert alert-error" id="alertErro"></div>
+      <div class="alert alert-ok" id="alertOk"></div>
+    </div>
+  </div>
+
+  <!-- Painel de preview -->
+  <div class="panel-preview">
+    <div class="card">
+      <h2>👁 Pré-visualização do Recibo</h2>
+      <div class="preview-wrap" id="previewWrap">
+        <p class="preview-empty">O recibo aparecerá aqui após o preenchimento.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Recibo (usado para PDF) -->
+<div id="recibo-container" style="position:absolute;left:-9999px;top:0;visibility:hidden;">
+  <div class="rec-header">
+    <img class="rec-logo" src="data:image/jpeg;base64,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" alt="Logo Fenix">
+    <div class="rec-company">
+      <div class="rec-company-name">Fenix Ltda.</div>
+      <div class="rec-company-info">CNPJ: 08.610.783/0001-37 &nbsp;|&nbsp; Insc. Est.: 03.030371-0</div>
+    </div>
+  </div>
+
+  <div class="rec-heading">Detalhes do pagamento</div>
+
+  <table class="rec-table">
+    <tr>
+      <td class="td-label">Entrada</td>
+      <td id="rc-entrada"></td>
+    </tr>
+    <tr>
+      <td class="td-label">Saída</td>
+      <td id="rc-saida"></td>
+    </tr>
+    <tr>
+      <td class="td-label">Sua Hospedagem</td>
+      <td id="rc-hospedagem"></td>
+    </tr>
+    <tr>
+      <td class="td-label">Localização</td>
+      <td>SHN, Quadra 02 BL E - Asa Norte, Brasília - DF, 70702-904</td>
+    </tr>
+    <tr>
+      <td class="td-label">Telefone</td>
+      <td>(61) 98356-5625</td>
+    </tr>
+  </table>
+
+  <table class="rec-val-table">
+    <tr>
+      <td class="rec-val-big" id="rc-valor"></td>
+      <td class="rec-val-words" id="rc-valorExtenso"></td>
+    </tr>
+    <tr>
+      <td class="rec-cafe-label">&nbsp;</td>
+      <td class="rec-guest-cell" id="rc-dados"></td>
+    </tr>
+    <tr>
+      <td class="rec-cafe-label">Café da Manhã</td>
+      <td>O café da manhã não está incluído no preço final.</td>
+    </tr>
+  </table>
+
+  <p class="rec-paragraph" id="rc-paragrafo"></p>
+  <p class="rec-date" id="rc-data"></p>
+
+  <div class="rec-sig-section">
+    <div class="rec-sig-images">
+      <img class="rec-sig-stamp" src="data:image/jpeg;base64,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" alt="Carimbo">
+    </div>
+    <div class="rec-sig-line"></div>
+    <div class="rec-sig-name">Silvino Dal Bo Neto</div>
+    <div class="rec-sig-info">CPF: 894.799.559-20</div>
+    <div class="rec-sig-info">Avenida Feliciano Coelho, 1089 – Trem – Macapá/AP</div>
+    <div class="rec-sig-info">CEP: 68.901-025 – Telefone (96)3223-2135</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
+        integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  NÚMERO POR EXTENSO (PT-BR)
+// ═══════════════════════════════════════════════════════
+function numParaExtenso(n) {
+  const und = ['','um','dois','três','quatro','cinco','seis','sete','oito','nove',
+               'dez','onze','doze','treze','quatorze','quinze','dezesseis',
+               'dezessete','dezoito','dezenove'];
+  const dez = ['','','vinte','trinta','quarenta','cinquenta',
+               'sessenta','setenta','oitenta','noventa'];
+  const cen = ['','cento','duzentos','trezentos','quatrocentos','quinhentos',
+               'seiscentos','setecentos','oitocentos','novecentos'];
+
+  if (n === 0) return 'zero';
+  if (n === 100) return 'cem';
+  if (n === 1000) return 'mil';
+
+  let r = '';
+
+  if (n >= 1000000) {
+    const m = Math.floor(n / 1000000);
+    r += numParaExtenso(m) + (m === 1 ? ' milhão' : ' milhões');
+    n %= 1000000;
+    if (n > 0) r += (n < 100 ? ' e ' : ', ');
+  }
+  if (n >= 1000) {
+    const m = Math.floor(n / 1000);
+    r += (m === 1 ? 'mil' : numParaExtenso(m) + ' mil');
+    n %= 1000;
+    if (n > 0) r += (n < 100 ? ' e ' : ', ');
+  }
+  if (n >= 100) {
+    r += cen[Math.floor(n / 100)];
+    n %= 100;
+    if (n > 0) r += ' e ';
+  }
+  if (n >= 20) {
+    r += dez[Math.floor(n / 10)];
+    n %= 10;
+    if (n > 0) r += ' e ';
+  }
+  if (n > 0) r += und[n];
+  return r;
+}
+
+function valorPorExtenso(val) {
+  if (isNaN(val) || val < 0) return '';
+  const reais = Math.floor(val);
+  const centavos = Math.round((val - reais) * 100);
+  let r = '';
+  if (reais > 0)    r += numParaExtenso(reais) + (reais === 1 ? ' real' : ' reais');
+  if (centavos > 0) r += (reais > 0 ? ' e ' : '') + numParaExtenso(centavos) + (centavos === 1 ? ' centavo' : ' centavos');
+  if (!r) r = 'zero reais';
+  return r;
+}
+
+// ═══════════════════════════════════════════════════════
+//  DATAS
+// ═══════════════════════════════════════════════════════
+const DIAS  = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+const MESES_ABREV = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const MESES_FULL  = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+function parseDatas(texto) {
+  // aceita DD/MM/YYYY ou D/M/YYYY
+  const re = /(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/g;
+  const matches = [...texto.matchAll(re)];
+  const result = { inicio: null, fim: null };
+  if (matches.length >= 1)
+    result.inicio = new Date(+matches[0][3], +matches[0][2]-1, +matches[0][1]);
+  if (matches.length >= 2)
+    result.fim = new Date(+matches[1][3], +matches[1][2]-1, +matches[1][1]);
+  return result;
+}
+
+function fmtEntrada(d) {
+  return `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES_ABREV[d.getMonth()]} de ${d.getFullYear()} (a partir das 15:00)`;
+}
+function fmtSaida(d) {
+  return `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES_ABREV[d.getMonth()]} de ${d.getFullYear()} (até as 12:00)`;
+}
+function fmtDataPT(d) {
+  return `${d.getDate()} de ${MESES_FULL[d.getMonth()]} de ${d.getFullYear()}`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  PARSER DE ENTRADA
+// ═══════════════════════════════════════════════════════
+function parseInput(texto) {
+  const dados = {};
+  const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+
+  for (const linha of linhas) {
+    const idx = linha.indexOf(':');
+    if (idx === -1) continue;
+    const chave = linha.slice(0, idx).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const valor = linha.slice(idx + 1).trim();
+    if (!valor) continue;
+
+    if (chave.includes('data') && (chave.includes('inicio') || chave.includes('termino') || chave.includes('reserva')))
+      dados.datas = valor;
+    else if (chave.includes('numero') || chave.includes('diaria'))
+      dados.diarias = valor;
+    else if (chave === 'valor')
+      dados.valor = valor;
+    else if (chave === 'nome')
+      dados.nome = valor;
+    else if (chave === 'cpf')
+      dados.cpf = valor;
+    else if (chave.includes('endereco'))
+      dados.endereco = valor;
+    else if (chave.includes('empresa'))
+      dados.empresa = valor;
+    else if (chave === 'cnpj')
+      dados.cnpj = valor;
+  }
+  return dados;
+}
+
+function parseValor(str) {
+  // "R$ 1.250,00" → 1250.00
+  const clean = str.replace(/R\$\s*/g,'').replace(/\./g,'').replace(',','.').trim();
+  return parseFloat(clean);
+}
+
+function fmtValorBRL(n) {
+  return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+
+// ═══════════════════════════════════════════════════════
+//  GERAR RECIBO
+// ═══════════════════════════════════════════════════════
+let dadosOk = false;
+let nomeCliente = '';
+let valorStr = '';
+
+function mostrarErro(msg) {
+  const el = document.getElementById('alertErro');
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+  document.getElementById('alertOk').style.display = 'none';
+}
+function mostrarOk(msg) {
+  const el = document.getElementById('alertOk');
+  el.textContent = '✔ ' + msg;
+  el.style.display = 'block';
+  document.getElementById('alertErro').style.display = 'none';
+}
+function ocultarAlertas() {
+  document.getElementById('alertErro').style.display = 'none';
+  document.getElementById('alertOk').style.display = 'none';
+}
+
+function gerarRecibo() {
+  ocultarAlertas();
+  dadosOk = false;
+  document.getElementById('btnPDF').disabled = true;
+
+  const texto = document.getElementById('inputData').value;
+  if (!texto.trim()) { mostrarErro('Cole os dados da reserva antes de gerar.'); return; }
+
+  const d = parseInput(texto);
+
+  // Validações obrigatórias
+  const obrigatorios = [
+    [d.datas,    'Data de início e término da reserva'],
+    [d.diarias,  'Número de Diárias'],
+    [d.valor,    'Valor'],
+    [d.nome,     'Nome'],
+    [d.cpf,      'CPF'],
+    [d.endereco, 'Endereço'],
+  ];
+  for (const [val, label] of obrigatorios) {
+    if (!val) { mostrarErro(`Campo obrigatório não encontrado: "${label}".`); return; }
+  }
+
+  // Datas
+  const datas = parseDatas(d.datas);
+  if (!datas.inicio) { mostrarErro('Não foi possível interpretar a data de início. Use o formato DD/MM/AAAA.'); return; }
+  if (!datas.fim)    { mostrarErro('Não foi possível interpretar a data de término. Use o formato DD/MM/AAAA.'); return; }
+
+  // Valor
+  const valorNum = parseValor(d.valor);
+  if (isNaN(valorNum)) { mostrarErro('Valor inválido. Use o formato: 1.250,00'); return; }
+  const valorFmt  = fmtValorBRL(valorNum);
+  const valorExt  = valorPorExtenso(valorNum);
+
+  // Dados do hóspede
+  let dadosHtml = `<strong>Nome:</strong> ${d.nome}<br>
+                   <strong>CPF:</strong> ${d.cpf}<br>
+                   <strong>Endereço:</strong> ${d.endereco}`;
+  if (d.empresa) dadosHtml += `<br><strong>Empresa:</strong> ${d.empresa}`;
+  if (d.cnpj)    dadosHtml += `<br><strong>CNPJ:</strong> ${d.cnpj}`;
+
+  // Número de diárias
+  const nDiarias = d.diarias.replace(/\D+/g,'') || d.diarias;
+  const hospedagemTxt = `${nDiarias} diária${nDiarias !== '1' ? 's' : ''}, 1 quarto`;
+
+  // Data do recibo (hoje)
+  const hoje = new Date();
+  const dataRecibo = fmtDataPT(hoje);
+
+  // Parágrafo principal
+  const paragrafo = `Recebemos de ${d.nome} a importância de ${valorFmt} (${valorExt}) referente ao pagamento da hospedagem acima descrita, na qual damos plena e total liquidação.`;
+
+  // Preencher campos
+  document.getElementById('rc-entrada').textContent    = fmtEntrada(datas.inicio);
+  document.getElementById('rc-saida').textContent      = fmtSaida(datas.fim);
+  document.getElementById('rc-hospedagem').textContent = hospedagemTxt;
+  document.getElementById('rc-valor').textContent      = valorFmt;
+  document.getElementById('rc-valorExtenso').textContent = valorExt;
+  document.getElementById('rc-dados').innerHTML        = dadosHtml;
+  document.getElementById('rc-paragrafo').textContent  = paragrafo;
+  document.getElementById('rc-data').textContent       = `Brasília/DF, ${dataRecibo}.`;
+
+  // Preview: clonar recibo para o preview
+  const clone = document.getElementById('recibo-container').cloneNode(true);
+  clone.style.position = '';
+  clone.style.left = '';
+  clone.style.top = '';
+  clone.style.visibility = '';
+  clone.style.transform = 'scale(0.72)';
+  clone.style.transformOrigin = 'top left';
+  clone.style.marginBottom = '-100px';
+
+  const wrap = document.getElementById('previewWrap');
+  wrap.innerHTML = '';
+  const scaler = document.createElement('div');
+  scaler.style.width = '151mm'; // 210mm * 0.72
+  scaler.style.overflow = 'hidden';
+  scaler.appendChild(clone);
+  wrap.appendChild(scaler);
+
+  nomeCliente = d.nome;
+  valorStr = valorFmt;
+  dadosOk = true;
+  document.getElementById('btnPDF').disabled = false;
+  mostrarOk('Recibo gerado com sucesso! Clique em Baixar PDF.');
+}
+
+// ═══════════════════════════════════════════════════════
+//  BAIXAR PDF
+// ═══════════════════════════════════════════════════════
+function baixarPDF() {
+  if (!dadosOk) return;
+
+  const el = document.getElementById('recibo-container');
+  el.style.visibility = 'visible';
+
+  const nomeSanitizado = nomeCliente.replace(/[^a-zA-Z0-9À-ú ]/g,'').trim().slice(0,40);
+  const nomeArquivo = `Recibo - ${nomeSanitizado}.pdf`;
+
+  const opt = {
+    margin:      [10, 10, 10, 10],
+    filename:    nomeArquivo,
+    image:       { type: 'jpeg', quality: 0.97 },
+    html2canvas: { scale: 2, useCORS: true, logging: false },
+    jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak:   { mode: ['avoid-all'] }
+  };
+
+  html2pdf().set(opt).from(el).save().then(() => {
+    el.style.visibility = 'hidden';
+    mostrarOk(`PDF "${nomeArquivo}" baixado com sucesso!`);
+  });
+}
+</script>
+</body>
+</html>
+
