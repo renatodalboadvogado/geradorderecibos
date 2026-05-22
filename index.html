@@ -42,37 +42,37 @@
     /* ── Receipt styles ── */
     #recibo-container {
       width: 210mm;
-      min-height: 297mm;
+      min-height: 270mm;
       background: #fff;
-      padding: 14mm 16mm;
+      padding: 12mm 14mm;
       font-family: Arial, Helvetica, sans-serif;
-      font-size: 10pt;
+      font-size: 13pt;
       color: #000;
       box-shadow: 0 4px 20px rgba(0,0,0,.15);
     }
-    .rec-header { display: flex; align-items: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 4px; }
-    .rec-logo { width: 54px; height: 54px; object-fit: contain; margin-right: 12px; }
+    .rec-header { display: flex; align-items: center; border-bottom: 2.5px solid #333; padding-bottom: 10px; margin-bottom: 6px; }
+    .rec-logo { width: 72px; height: 72px; object-fit: contain; margin-right: 16px; }
     .rec-company { flex: 1; }
-    .rec-company-name { font-size: 14pt; font-weight: bold; }
-    .rec-company-info { font-size: 8.5pt; color: #444; margin-top: 2px; }
-    .rec-heading { margin: 10px 0 6px; font-size: 11pt; font-weight: bold; color: #1a365d; border-left: 3px solid #2b6cb0; padding-left: 8px; }
-    .rec-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 9.5pt; }
-    .rec-table td { border: 1px solid #999; padding: 5px 8px; vertical-align: top; }
+    .rec-company-name { font-size: 19pt; font-weight: bold; }
+    .rec-company-info { font-size: 11pt; color: #444; margin-top: 3px; }
+    .rec-heading { margin: 14px 0 8px; font-size: 13.5pt; font-weight: bold; color: #1a365d; border-left: 4px solid #2b6cb0; padding-left: 10px; }
+    .rec-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 12pt; }
+    .rec-table td { border: 1px solid #999; padding: 9px 13px; vertical-align: middle; }
     .rec-table .td-label { background: #f7fafc; font-weight: bold; width: 32%; color: #2d3748; white-space: nowrap; }
-    .rec-val-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 9.5pt; }
-    .rec-val-table td { border: 1px solid #999; padding: 6px 10px; vertical-align: top; }
-    .rec-val-big { font-size: 13pt; font-weight: bold; color: #276749; text-align: center; width: 28%; }
-    .rec-val-words { font-style: italic; color: #444; }
-    .rec-guest-cell { line-height: 1.7; }
-    .rec-cafe-label { background: #f7fafc; font-weight: bold; width: 28%; color: #2d3748; font-size: 9pt; }
-    .rec-paragraph { margin: 12px 0; font-size: 9.5pt; line-height: 1.6; text-align: justify; }
-    .rec-date { margin: 10px 0; font-size: 9.5pt; }
-    .rec-sig-section { margin-top: 20px; text-align: center; }
-    .rec-sig-images { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 4px; }
-    .rec-sig-stamp { width: 70px; height: 70px; object-fit: contain; }
-    .rec-sig-line { border-top: 1.5px solid #333; width: 220px; margin: 8px auto 4px; }
-    .rec-sig-name { font-size: 9.5pt; font-weight: bold; }
-    .rec-sig-info { font-size: 8.5pt; color: #444; margin-top: 2px; }
+    .rec-val-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 12pt; }
+    .rec-val-table td { border: 1px solid #999; padding: 10px 14px; vertical-align: top; }
+    .rec-val-big { font-size: 17pt; font-weight: bold; color: #276749; text-align: center; width: 28%; vertical-align: middle; }
+    .rec-val-words { font-style: italic; color: #444; font-size: 12pt; }
+    .rec-guest-cell { line-height: 1.85; font-size: 12pt; }
+    .rec-cafe-label { background: #f7fafc; font-weight: bold; width: 28%; color: #2d3748; font-size: 12pt; vertical-align: middle; }
+    .rec-paragraph { margin: 16px 0; font-size: 12pt; line-height: 1.7; text-align: justify; }
+    .rec-date { margin: 14px 0 0; font-size: 12pt; }
+    .rec-sig-section { margin-top: 28px; text-align: center; }
+    .rec-sig-images { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .rec-sig-stamp { width: 96px; height: 96px; object-fit: contain; }
+    .rec-sig-line { border-top: 1.5px solid #333; width: 280px; margin: 10px auto 6px; }
+    .rec-sig-name { font-size: 12pt; font-weight: bold; }
+    .rec-sig-info { font-size: 11pt; color: #444; margin-top: 3px; }
   </style>
 </head>
 <body>
@@ -405,22 +405,26 @@ function gerarRecibo() {
   document.getElementById('rc-data').textContent       = `Brasília/DF, ${dataRecibo}.`;
 
   // Preview: clonar recibo para o preview
-  const clone = document.getElementById('recibo-container').cloneNode(true);
-  clone.style.position = '';
-  clone.style.left = '';
-  clone.style.top = '';
-  clone.style.visibility = '';
-  clone.style.transform = 'scale(0.72)';
-  clone.style.transformOrigin = 'top left';
-  clone.style.marginBottom = '-100px';
-
   const wrap = document.getElementById('previewWrap');
   wrap.innerHTML = '';
-  const scaler = document.createElement('div');
-  scaler.style.width = '151mm'; // 210mm * 0.72
-  scaler.style.overflow = 'hidden';
-  scaler.appendChild(clone);
-  wrap.appendChild(scaler);
+
+  const clone = document.getElementById('recibo-container').cloneNode(true);
+  clone.style.display = 'block';   // ← corrige o display:none herdado
+  clone.style.boxShadow = 'none';
+  clone.style.transformOrigin = 'top left';
+
+  // Calcular escala para caber no painel de preview
+  const wrapW = wrap.clientWidth - 32;
+  const reciboW = 794; // ~210mm a 96dpi
+  const scale = Math.min(wrapW / reciboW, 0.85);
+
+  clone.style.transform = `scale(${scale})`;
+  clone.style.width = reciboW + 'px';
+
+  const outer = document.createElement('div');
+  outer.style.cssText = `width:${Math.round(reciboW * scale)}px; overflow:hidden; margin:0 auto;`;
+  outer.appendChild(clone);
+  wrap.appendChild(outer);
 
   nomeCliente = d.nome;
   valorStr = valorFmt;
