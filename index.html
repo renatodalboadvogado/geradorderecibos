@@ -103,7 +103,7 @@ CNPJ:"></textarea>
       <p class="hint">Cole a mensagem preenchida acima e clique em <strong>Gerar Recibo</strong>.</p>
       <div class="btn-row">
         <button class="btn-primary" onclick="gerarRecibo()">✅ Gerar Recibo</button>
-        <button class="btn-success" id="btnPDF" onclick="baixarPDF()" disabled>🖨 Imprimir / Salvar PDF</button>
+        <button class="btn-success" id="btnPDF" onclick="baixarPDF()" disabled>⬇ Baixar PDF</button>
       </div>
       <div class="alert alert-error" id="alertErro"></div>
       <div class="alert alert-ok" id="alertOk"></div>
@@ -187,7 +187,8 @@ CNPJ:"></textarea>
   </div>
 </div>
 
-<!-- html2pdf removido: usamos window.print() para PDF perfeito -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
 // ═══════════════════════════════════════════════════════
@@ -434,83 +435,87 @@ function gerarRecibo() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  BAIXAR PDF — via window.print() (sem dependências externas)
-//  Abre uma janela limpa com o recibo e dispara o diálogo
-//  de impressão do navegador → "Salvar como PDF"
+//  BAIXAR PDF — html2canvas + jsPDF
+//  Gera arquivo .pdf real no browser, sem diálogo de
+//  impressão e sem URL no rodapé.
 // ═══════════════════════════════════════════════════════
 function baixarPDF() {
   if (!dadosOk) return;
 
   const btn = document.getElementById('btnPDF');
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando PDF...';
 
-  // Clonar o recibo preenchido e limpar estilos de ocultação
-  const recibo = document.getElementById('recibo-container').cloneNode(true);
-  recibo.removeAttribute('style');   // remove display:none
+  // ── 1. Clonar o recibo preenchido ──────────────────────
+  const original = document.getElementById('recibo-container');
+  const clone = original.cloneNode(true);
 
-  // Coletar TODO o CSS desta página (inline <style>)
-  const cssBase = Array.from(document.querySelectorAll('style'))
-                       .map(s => s.textContent).join('\n');
+  // Posicionar fora da tela mas visível para o html2canvas
+  // (display:none impede a captura; opacity:0 + fixed funciona)
+  clone.style.cssText = [
+    'display:block',
+    'position:fixed',
+    'left:-9999px',
+    'top:0',
+    'width:794px',        // A4 a 96 dpi — unidade fixa para html2canvas
+    'background:#fff',
+    'box-shadow:none',
+  ].join(';');
 
-  // Montar HTML da janela de impressão
-  const htmlImpressao = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Recibo - ${nomeCliente}</title>
-  <style>
-    /* ── Estilos do recibo (copiados da página principal) ── */
-    ${cssBase}
+  document.body.appendChild(clone);
 
-    /* ── Overrides de impressão ── */
-    @page {
-      size: A4 portrait;
-      margin: 0;          /* margin 0 suprime URL/cabeçalho do Chrome */
+  const nomeSanitizado = nomeCliente
+    .replace(/[^a-zA-Z0-9À-ú ]/g, '').trim().slice(0, 40);
+  const nomeArquivo = `Recibo - ${nomeSanitizado}.pdf`;
+
+  // ── 2. Capturar o clone como imagem ───────────────────
+  html2canvas(clone, {
+    scale: 2,                  // resolução 2× para nitidez
+    useCORS: true,
+    backgroundColor: '#ffffff',
+    logging: false,
+    width: 794,
+    windowWidth: 794,
+  })
+  .then(canvas => {
+    document.body.removeChild(clone);
+
+    // ── 3. Criar PDF A4 e inserir a imagem ──────────────
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    const pageW = pdf.internal.pageSize.getWidth();   // 210 mm
+    const pageH = pdf.internal.pageSize.getHeight();  // 297 mm
+    const imgData = canvas.toDataURL('image/jpeg', 0.97);
+
+    // Escalar para largura total do A4
+    const imgH = (canvas.height / canvas.width) * pageW;
+
+    // Suporte a recibos que ultrapassem uma página (raro, mas seguro)
+    if (imgH <= pageH) {
+      pdf.addImage(imgData, 'JPEG', 0, 0, pageW, imgH);
+    } else {
+      let yRendered = 0;
+      while (yRendered < imgH) {
+        if (yRendered > 0) pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, -yRendered, pageW, imgH);
+        yRendered += pageH;
+      }
     }
-    *, *::before, *::after {
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #fff;
-    }
-    #recibo-container {
-      width: 100% !important;
-      min-height: auto !important;
-      box-shadow: none !important;
-      padding: 14mm 16mm !important;  /* margem visual fica aqui, não no @page */
-      display: block !important;
-    }
-  </style>
-</head>
-<body>
-  ${recibo.outerHTML}
-  <script>
-    // Dispara impressão assim que a página (e as imagens) carregar
-    window.addEventListener('load', function () {
-      setTimeout(function () {
-        window.print();
-        // Fecha a aba após o usuário confirmar/cancelar a impressão
-        window.addEventListener('afterprint', function () { window.close(); });
-      }, 400);
-    });
-  <\/script>
-</body>
-</html>`;
 
-  const janela = window.open('', '_blank');
+    pdf.save(nomeArquivo);
 
-  if (!janela) {
-    mostrarErro('Pop-up bloqueado pelo navegador. Clique no ícone de pop-up na barra de endereços e permita para este site.');
-    return;
-  }
-
-  janela.document.open();
-  janela.document.write(htmlImpressao);
-  janela.document.close();
-
-  mostrarOk('Diálogo de impressão aberto. Escolha "Salvar como PDF" na lista de impressoras.');
+    btn.disabled = false;
+    btn.textContent = '⬇ Baixar PDF';
+    mostrarOk(`"${nomeArquivo}" baixado com sucesso!`);
+  })
+  .catch(err => {
+    if (document.body.contains(clone)) document.body.removeChild(clone);
+    btn.disabled = false;
+    btn.textContent = '⬇ Baixar PDF';
+    mostrarErro('Erro ao gerar PDF. Tente novamente.');
+    console.error(err);
+  });
 }
 </script>
 </body>
